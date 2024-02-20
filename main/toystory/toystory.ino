@@ -108,8 +108,15 @@ void servoTestSequence(){
   if (servonum > 10) servonum = 0; // Testing the first 10 servo channels
 }
 
+#define DELAY_MS 5000
+int currentTime = 0;
+int lastTime = 0;
 void loop(){
   val = digitalRead(sensor);   // read sensor value
+  
+  currentTime = millis();
+  int dTime = currentTime - lastTime;
+  
   if (val == HIGH) {           // check if the sensor is HIGH
     //digitalWrite(led, HIGH);   // turn LED ON
     delay(200);                // delay 200 milliseconds 
@@ -121,8 +128,7 @@ void loop(){
   } 
   else {
      // digitalWrite(led, LOW); // turn LED OFF
-      delay(200);             // delay 200 milliseconds 
-      
+      delay(200);             // delay 200 milliseconds   
       if (state == HIGH){
         Serial.println("Motion stopped!");
         state = LOW;       // update variable state to LOW
@@ -134,6 +140,8 @@ void loop(){
 
   if(state == LOW){
     // Choose which animal to wiggle
+    int index = random(0, numberAnimals-1);
+    Serial.println("Moving animal %d on pin %d by %d degrees", index, pins[index], angles[index]);
     
   }
 }
