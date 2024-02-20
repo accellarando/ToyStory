@@ -73,6 +73,10 @@ void setup() {
   delay(10);
 }
 
+void moveMe(int animal, int angle ){
+  
+}
+
 // You can use this function if you'd like to set the pulse length in seconds
 // e.g. setServoPulse(0, 0.001) is a ~1 millisecond pulse width. It's not precise!
 // not used??
