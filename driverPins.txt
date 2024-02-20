@@ -1,0 +1,5 @@
+Fluffy bear		0
+Sweater bear	2
+Polar bear		4
+Dinosaur		6
+Puppy			8
