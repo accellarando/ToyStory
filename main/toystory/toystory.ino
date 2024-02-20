@@ -8,12 +8,17 @@
 
 
  //Animal pins:
- int fluffy = 0;
- int sweater = 2;
- int polar = 4;
- int dino = 6;
- int puppy = 8;
- int empty = 10;
+ #define FLUFFY 0
+ #define SWEATER 2
+ #define POLAR 4
+ #define DINO 6
+ #define PUPPY 8
+ #define EMPTY 10
+ 
+ int pins[] = {FLUFFY, SWEATER, POLAR, DINO, PUPPY, EMPTY};
+ int angles[] = {10, 10, 10, 10, 10, 10};
+ int numberAnimals = sizeof(pins)/sizeof(int);
+ 
 //int led = 13;                // the pin that the LED is atteched to
 int sensor = 2;              // the pin that the sensor is atteched to
 int state = LOW;             // by default, no motion detected
@@ -70,6 +75,7 @@ void setup() {
 
 // You can use this function if you'd like to set the pulse length in seconds
 // e.g. setServoPulse(0, 0.001) is a ~1 millisecond pulse width. It's not precise!
+// not used??
 void setServoPulse(uint8_t n, double pulse) {
   double pulselength;
   
@@ -84,11 +90,29 @@ void setServoPulse(uint8_t n, double pulse) {
   pwm.setPWM(n, 0, pulse);
 }
 
+void servoTestSequence(){
+    // Drive each servo one at a time using setPWM()
+  Serial.println(servonum);
+  for (uint16_t pulselen = SERVOMIN; pulselen < SERVOMAX; pulselen++) {
+    pwm.setPWM(servonum, 0, pulselen);
+  }
+
+  delay(500);
+  for (uint16_t pulselen = SERVOMAX; pulselen > SERVOMIN; pulselen--) {
+    pwm.setPWM(servonum, 0, pulselen);
+  }
+
+  delay(500);
+
+  servonum++;
+  if (servonum > 10) servonum = 0; // Testing the first 10 servo channels
+}
+
 void loop(){
   val = digitalRead(sensor);   // read sensor value
   if (val == HIGH) {           // check if the sensor is HIGH
     //digitalWrite(led, HIGH);   // turn LED ON
-    delay(100);                // delay 100 milliseconds 
+    delay(200);                // delay 200 milliseconds 
     
     if (state == LOW) {
       Serial.println("Motion detected!"); 
@@ -106,32 +130,10 @@ void loop(){
   }
 
   //Servo shit
-  // Drive each servo one at a time using setPWM()
-  Serial.println(servonum);
-  for (uint16_t pulselen = SERVOMIN; pulselen < SERVOMAX; pulselen++) {
-    pwm.setPWM(servonum, 0, pulselen);
+  //servoTestSequence();
+
+  if(state == LOW){
+    // Choose which animal to wiggle
+    
   }
-
-  delay(500);
-  for (uint16_t pulselen = SERVOMAX; pulselen > SERVOMIN; pulselen--) {
-    pwm.setPWM(servonum, 0, pulselen);
-  }
-
-  delay(500);
-
-  // Drive each servo one at a time using writeMicroseconds(), it's not precise due to calculation rounding!
-  // The writeMicroseconds() function is used to mimic the Arduino Servo library writeMicroseconds() behavior. 
-  for (uint16_t microsec = USMIN; microsec < USMAX; microsec++) {
-    pwm.writeMicroseconds(servonum, microsec);
-  }
-
-  delay(500);
-  for (uint16_t microsec = USMAX; microsec > USMIN; microsec--) {
-    pwm.writeMicroseconds(servonum, microsec);
-  }
-
-  delay(500);
-
-  servonum++;
-  if (servonum > 7) servonum = 0; // Testing the first 8 servo channels
 }
