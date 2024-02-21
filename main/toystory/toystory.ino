@@ -43,10 +43,9 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 #define SERVO_MAX_DEGREE 180
 
 // Define servo rotation parameters
-#define MIN_ANGLE 0  // Minimum angle
-#define MAX_ANGLE 180  // Maximum angle
-#define STEP_ANGLE 10 // Angle increment for each step
-#define STEP_DELAY 100 // Delay between steps in milliseconds
+#define STEP_DELAY    15  // Milliseconds per degree, approximate
+#define NUM_ROTATIONS 3   // How many times an animal moves back and forth
+#define STOP_DELAY    200 // How long to wait on stopped segments
 
 // our servo # counter
 uint8_t servonum = 0;
@@ -84,14 +83,17 @@ void setup() {
 void moveMe(int animal, int angle){
     Serial.print("Moving animal ");
     Serial.println(animal);
-    pwm.setPWM(animal, 0, 410); //full speed forward
-    delay(STEP_DELAY);
-    pwm.setPWM(animal, 0, 0); //stops
-    delay(STEP_DELAY);
-    pwm.setPWM(animal, 0, 205); //full speed backward?
-    delay(STEP_DELAY);
-    pwm.setPWM(animal, 0, 0); //stops
-    delay(STEP_DELAY);
+	int delayTime = STEP_DELAY * angle;
+    for(int i=0; i<NUM_ROTATIONS; i++){
+		pwm.setPWM(animal, 0, 410); //full speed forward
+		delay(delayTime);
+		pwm.setPWM(animal, 0, 0); //stops
+		delay(STOP_DELAY);
+		pwm.setPWM(animal, 0, 205); //full speed backward?
+		delay(delayTime);
+		pwm.setPWM(animal, 0, 0); //stops
+		delay(STOP_DELAY);
+	}
 }
 
 void stopAll(){
@@ -139,25 +141,30 @@ void servoTestSequence(){
 int currentTime = 0;
 int triggerTime = 0;
 int oldVal = HIGH;
+bool stopped = HIGH;
 void loop(){
-  delay(10); //calm down
+  //delay(10); //calm down
   val = digitalRead(sensor);   // read sensor value
   
   currentTime = millis();
   
   // on falling edge, note current time and wait DELAY_MS before triggering more movement.
-  // on rising edge of val, stop all motion. (active low)
+  // on rising edge of val, stop all motion
 
   if(val == HIGH && oldVal == LOW){ //posedge
-    Serial.println("No motion!");
+    Serial.println("Motion detected!");
     state = HIGH;
+    Serial.println("Stopping all animals.");
+    stopAll();
+    stopped = HIGH;
   }
   if(val == LOW && oldVal == HIGH){ //negedge
+    stopped = LOW;
     triggerTime = millis();
   }
   oldVal = val;
   int dTime = currentTime - triggerTime;
-  if(dTime > DELAY_MS)
+  if(dTime > DELAY_MS && stopped == LOW)
     state = LOW;
     
   //Servo shit
@@ -173,10 +180,13 @@ void loop(){
     Serial.print(angles[index]);
     Serial.println("degrees");
     //moveMe(pins[index], angles[index]);
-    moveMe(10, angles[index]);
+    moveMe(10, 5);
   }
   else{ // ie, motion is detected
+    // only trigger on edges - not appropriate in this scope, moved to edge detection area
+    /*
     Serial.println("Stopping all animals.");
     stopAll();
+    */
   }
 }
