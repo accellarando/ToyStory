@@ -26,10 +26,6 @@ int val = 0;                 // variable to store the sensor status (value)
 
 // called this way, it uses the default address 0x40
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
-// you can also call it with a different address you want
-//Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x41);
-// you can also call it with a different address and I2C interface
-//Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40, Wire);
 
 // Depending on your servo make, the pulse width min and max may vary, you 
 // want these to be as small/large as possible without hitting the hard stop
@@ -41,6 +37,17 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 #define USMAX  2400 // This is the rounded 'maximum' microsecond length based on the maximum pulse of 600
 #define SERVO_FREQ 50 // Analog servos run at ~50 Hz updates
 
+// Define the servo parameters
+#define SERVO_MIN_PULSE_WIDTH 10 //650
+#define SERVO_MAX_PULSE_WIDTH 100//2350
+#define SERVO_MAX_DEGREE 180
+
+// Define servo rotation parameters
+#define MIN_ANGLE 0  // Minimum angle
+#define MAX_ANGLE 180  // Maximum angle
+#define STEP_ANGLE 10 // Angle increment for each step
+#define STEP_DELAY 100 // Delay between steps in milliseconds
+
 // our servo # counter
 uint8_t servonum = 0;
 
@@ -48,9 +55,10 @@ void setup() {
   //pinMode(led, OUTPUT);      // initalize LED as an output
   pinMode(sensor, INPUT);    // initialize sensor as an input
   Serial.begin(9600);        // initialize serial
-  Serial.println("8 channel Servo test!");
+  Serial.println("Hi queen");
 
   pwm.begin();
+
   /*
    * In theory the internal oscillator (clock) is 25MHz but it really isn't
    * that precise. You can 'calibrate' this by tweaking this number until
@@ -73,8 +81,23 @@ void setup() {
   delay(10);
 }
 
-void moveMe(int animal, int angle ){
-  
+void moveMe(int animal, int angle){
+    Serial.print("Moving animal ");
+    Serial.println(animal);
+    pwm.setPWM(animal, 0, 410); //full speed forward
+    delay(STEP_DELAY);
+    pwm.setPWM(animal, 0, 0); //stops
+    delay(STEP_DELAY);
+    pwm.setPWM(animal, 0, 205); //full speed backward?
+    delay(STEP_DELAY);
+    pwm.setPWM(animal, 0, 0); //stops
+    delay(STEP_DELAY);
+}
+
+void stopAll(){
+  for(int i = 0; i < 6; i++){
+    pwm.setPWM(pins[i], 0, 0); 
+  }
 }
 
 // You can use this function if you'd like to set the pulse length in seconds
@@ -115,7 +138,7 @@ void servoTestSequence(){
 void loop(){
   val = digitalRead(sensor);   // read sensor value
   if (val == HIGH) {           // check if the sensor is HIGH
-    //digitalWrite(led, HIGH);   // turn LED ON
+    stopAll();   // stop all animals from moving
     delay(200);                // delay 200 milliseconds 
     
     if (state == LOW) {
@@ -138,6 +161,6 @@ void loop(){
 
   if(state == LOW){
     // Choose which animal to wiggle
-    
+    moveMe(EMPTY, 10);
   }
 }
