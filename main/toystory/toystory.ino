@@ -16,12 +16,12 @@
  #define EMPTY 10
  
  int pins[] = {FLUFFY, SWEATER, POLAR, DINO, PUPPY, EMPTY};
- int angles[] = {10, 10, 10, 10, 10, 10};
+ int angles[] = {5, 5, 5, 5, 5, 5};
  int numberAnimals = sizeof(pins)/sizeof(int);
  
 //int led = 13;                // the pin that the LED is atteched to
 int sensor = 2;              // the pin that the sensor is atteched to
-int state = LOW;             // by default, no motion detected
+int state = HIGH;             // by default, no motion detected
 int val = 0;                 // variable to store the sensor status (value)
 
 // called this way, it uses the default address 0x40
@@ -135,32 +135,48 @@ void servoTestSequence(){
   if (servonum > 10) servonum = 0; // Testing the first 10 servo channels
 }
 
+#define DELAY_MS 5000
+int currentTime = 0;
+int triggerTime = 0;
+int oldVal = HIGH;
 void loop(){
+  delay(10); //calm down
   val = digitalRead(sensor);   // read sensor value
-  if (val == HIGH) {           // check if the sensor is HIGH
-    stopAll();   // stop all animals from moving
-    delay(200);                // delay 200 milliseconds 
-    
-    if (state == LOW) {
-      Serial.println("Motion detected!"); 
-      state = HIGH;       // update variable state to HIGH
-    }
-  } 
-  else {
-     // digitalWrite(led, LOW); // turn LED OFF
-      delay(200);             // delay 200 milliseconds 
-      
-      if (state == HIGH){
-        Serial.println("Motion stopped!");
-        state = LOW;       // update variable state to LOW
-    }
-  }
+  
+  currentTime = millis();
+  
+  // on rising edge, note current time and wait DELAY_MS before triggering more movement.
+  // on falling edge of val, stop all motion. (active low)
 
+  if(val == HIGH && oldVal == LOW){ //posedge
+    triggerTime = millis();
+  }
+  if(val == LOW && oldVal == HIGH){ //negedge
+    Serial.println("No motion!");
+    state = HIGH;
+  }
+  oldVal = val;
+  int dTime = currentTime - triggerTime;
+  if(dTime > DELAY_MS)
+    state = LOW;
+    
   //Servo shit
   //servoTestSequence();
-
-  if(state == LOW){
+  if(state != LOW){
     // Choose which animal to wiggle
-    moveMe(EMPTY, 10);
+    int index = random(0, numberAnimals-1);
+    Serial.print("Moving animal");
+    Serial.print(index);
+    Serial.print(" on pin ");
+    Serial.print(pins[index]);
+    Serial.print(" by ");
+    Serial.print(angles[index]);
+    Serial.println("degrees");
+    //moveMe(pins[index], angles[index]);
+    moveMe(10, angles[index]);
+  }
+  else{ // ie, motion is detected
+    Serial.println("Stopping all animals.");
+    stopAll();
   }
 }
