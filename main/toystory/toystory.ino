@@ -145,15 +145,15 @@ void loop(){
   
   currentTime = millis();
   
-  // on falling edge, note current time and wait DELAY_MS before triggering more movement.
-  // on rising edge of val, stop all motion. (active low)
+  // on rising edge, note current time and wait DELAY_MS before triggering more movement.
+  // on falling edge of val, stop all motion. (active low)
 
   if(val == HIGH && oldVal == LOW){ //posedge
-    Serial.println("No motion!");
-    state = HIGH;
+    triggerTime = millis();
   }
   if(val == LOW && oldVal == HIGH){ //negedge
-    triggerTime = millis();
+    Serial.println("No motion!");
+    state = HIGH;
   }
   oldVal = val;
   int dTime = currentTime - triggerTime;
@@ -162,7 +162,7 @@ void loop(){
     
   //Servo shit
   //servoTestSequence();
-  if(state == LOW){
+  if(state != LOW){
     // Choose which animal to wiggle
     int index = random(0, numberAnimals-1);
     Serial.print("Moving animal");
