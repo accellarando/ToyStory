@@ -16,12 +16,12 @@
  #define EMPTY 10
  
  int pins[] = {FLUFFY, SWEATER, POLAR, DINO, PUPPY, EMPTY};
- int angles[] = {10, 10, 10, 10, 10, 10};
+ int angles[] = {5, 5, 5, 5, 5, 5};
  int numberAnimals = sizeof(pins)/sizeof(int);
  
 //int led = 13;                // the pin that the LED is atteched to
 int sensor = 2;              // the pin that the sensor is atteched to
-int state = LOW;             // by default, no motion detected
+int state = HIGH;             // by default, no motion detected
 int val = 0;                 // variable to store the sensor status (value)
 
 // called this way, it uses the default address 0x40
@@ -73,7 +73,7 @@ void setup() {
   delay(10);
 }
 
-void moveMe(int animal, int angle ){
+void moveMe(int animalPinNumber, int angle ){
   
 }
 
@@ -114,38 +114,39 @@ void servoTestSequence(){
 
 #define DELAY_MS 5000
 int currentTime = 0;
-int lastTime = 0;
+int triggerTime = 0;
+int oldVal = HIGH;
 void loop(){
+  delay(10); //calm down
   val = digitalRead(sensor);   // read sensor value
   
   currentTime = millis();
-  int dTime = currentTime - lastTime;
   
-  if (val == HIGH) {           // check if the sensor is HIGH
-    //digitalWrite(led, HIGH);   // turn LED ON
-    delay(200);                // delay 200 milliseconds 
-    
-    if (state == LOW) {
-      Serial.println("Motion detected!"); 
-      state = HIGH;       // update variable state to HIGH
-    }
-  } 
-  else {
-     // digitalWrite(led, LOW); // turn LED OFF
-      delay(200);             // delay 200 milliseconds   
-      if (state == HIGH){
-        Serial.println("Motion stopped!");
-        state = LOW;       // update variable state to LOW
-    }
-  }
+  // on rising edge, note current time and wait DELAY_MS before triggering more movement.
+  // on falling edge of val, stop all motion. (active low)
 
+  if(val == HIGH && oldVal == LOW){ //posedge
+    triggerTime = millis();
+  }
+  if(val == LOW && oldVal == HIGH){ //negedge
+    Serial.println("No motion!");
+    state = HIGH;
+  }
+  oldVal = val;
+  int dTime = currentTime - triggerTime;
+  if(dTime > DELAY_MS)
+    state = LOW;
+    
   //Servo shit
   //servoTestSequence();
-
   if(state == LOW){
     // Choose which animal to wiggle
     int index = random(0, numberAnimals-1);
     Serial.println("Moving animal %d on pin %d by %d degrees", index, pins[index], angles[index]);
-    
+    moveMe(pins[index], angles[index]);
+  }
+  else{ // ie, motion is detected
+    Serial.println("Stopping all animals.");
+    stopAll();
   }
 }
