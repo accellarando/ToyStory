@@ -21,9 +21,12 @@
 volatile int state = STOPPED;
 volatile int edgeDetected = -1; // 0 = none, 1 = rising, -1 = falling. init'd to -1 so that it'll actually start moving
 
-int pins[] = {FLUFFY, SWEATER, POLAR, DINO, PUPPY, EMPTY};
-int angles[] = {5, 5, 5, 5, 5, 5};
-int numberAnimals = sizeof(pins)/sizeof(int);
+int fastPins[] = {FLUFFY, SWEATER, POLAR};
+int slowPins[] = {DINO, PUPPY};
+int fastAngle = 5;
+int slowAngle = 10;
+int numberFastAnimals = sizeof(fastPins)/sizeof(int);
+int numberSlowAnimals = sizeof(slowPins)/sizeof(int);
 
 int sensor = 2;              // the pin that the sensor is attached to
 int val = 0;                 // variable to store the sensor status (value)
@@ -81,77 +84,58 @@ void setup() {
 	pwm.setOscillatorFrequency(27000000);
 	pwm.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
 
-	// Register pin change interrupt for motion sensor
-	attachInterrupt (digitalPinToInterrupt (sensor), motionISR, CHANGE);  // attach interrupt handler, both edges
+	// Register pin change interrupt for motion sensor - both edges
+	attachInterrupt (digitalPinToInterrupt (sensor), motionISR, CHANGE);
 
 	delay(10);
 }
 
-void moveMe(int animal, int angle){
+void moveUs(int animalA, int animalB, int angle){
 	Serial.print("Moving animal ");
-	Serial.println(animal);
+	Serial.print(animalA);
+	Serial.print(" and animal ");
+	Serial.println(animalB);
 	int delayTime = STEP_DELAY * angle;
 	for(int i=0; i<NUM_ROTATIONS; i++){
-		pwm.setPWM(animal, 0, SERVO_FORWARD_PULSE_WIDTH); //full speed forward
+		pwm.setPWM(animalA, 0, SERVO_FORWARD_PULSE_WIDTH); //full speed forward
+		pwm.setPWM(animalB, 0, SERVO_STOP_PULSE_WIDTH); 
 		delay(delayTime);
-		pwm.setPWM(animal, 0, SERVO_STOP_PULSE_WIDTH); //stops
+		pwm.setPWM(animalA, 0, SERVO_STOP_PULSE_WIDTH); //stops
+		pwm.setPWM(animalB, 0, SERVO_FORWARD_PULSE_WIDTH);
+		if(edgeDetected == 1){
+      pwm.setPWM(animalB, 0, SERVO_STOP_PULSE_WIDTH);
+			return;
+		}
+		delay(delayTime);
+		pwm.setPWM(animalA, 0, SERVO_BACKWARD_PULSE_WIDTH); //full speed backward
+		pwm.setPWM(animalB, 0, SERVO_STOP_PULSE_WIDTH); //full speed backward
+		delay(delayTime);
+		pwm.setPWM(animalA, 0, SERVO_STOP_PULSE_WIDTH); //stops
+		pwm.setPWM(animalB, 0, SERVO_BACKWARD_PULSE_WIDTH); 
 		if(edgeDetected == 1){
 			return;
 		}
-		delay(STOP_DELAY);
-		pwm.setPWM(animal, 0, SERVO_BACKWARD_PULSE_WIDTH); //full speed backward
 		delay(delayTime);
-		pwm.setPWM(animal, 0, SERVO_STOP_PULSE_WIDTH); //stops
-		if(edgeDetected == 1){
-			return;
-		}
-		delay(STOP_DELAY);
 	}
 }
 
 void stopAll(){
-	for(int i = 0; i < numberAnimals; i++){
-		pwm.setPWM(pins[i], 0, 0); 
+	// stop fast ones
+	for(int i = 0; i < numberFastAnimals; i++){
+		pwm.setPWM(fastPins[i], 0, 0); 
+	}
+	// stop slow ones
+	for(int i = 0; i < numberSlowAnimals; i++){
+		pwm.setPWM(slowPins[i], 0, 0); 
 	}
 }
 
-// You can use this function if you'd like to set the pulse length in seconds
-// e.g. setServoPulse(0, 0.001) is a ~1 millisecond pulse width. It's not precise!
-// not used??
-void setServoPulse(uint8_t n, double pulse) {
-	double pulselength;
-
-	pulselength = 1000000;   // 1,000,000 us per second
-	pulselength /= SERVO_FREQ;   // Analog servos run at ~60 Hz updates
-	Serial.print(pulselength); Serial.println(" us per period"); 
-	pulselength /= 4096;  // 12 bits of resolution
-	Serial.print(pulselength); Serial.println(" us per bit"); 
-	pulse *= 1000000;  // convert input seconds to us
-	pulse /= pulselength;
-	Serial.println(pulse);
-	pwm.setPWM(n, 0, pulse);
-}
-
-void servoTestSequence(){
-	// Drive each servo one at a time using setPWM()
-	Serial.println(servonum);
-	for (uint16_t pulselen = SERVOMIN; pulselen < SERVOMAX; pulselen++) {
-		pwm.setPWM(servonum, 0, pulselen);
-	}
-
-	delay(500);
-	for (uint16_t pulselen = SERVOMAX; pulselen > SERVOMIN; pulselen--) {
-		pwm.setPWM(servonum, 0, pulselen);
-	}
-
-	delay(500);
-
-	servonum++;
-	if (servonum > 10) servonum = 0; // Testing the first 10 servo channels
-}
 #define DELAY_MS 5000
+#define MAX_DELAY_BETWEEN 7000
 int currentTime = 0;
 int triggerTime = 0;
+int timeLastMoved = 0;
+int thisDelay = MAX_DELAY_BETWEEN;
 
 void motionISR(){
 	if(digitalRead(sensor) == HIGH){
@@ -168,12 +152,11 @@ void motionISR(){
 	}
 }
 
-// int oldVal = HIGH;
-// bool stopped = HIGH;
 void loop(){
 	currentTime = millis();
 	int dTime = currentTime - triggerTime;
-
+  int dTimeMtn = currentTime - timeLastMoved;
+  
 	if(edgeDetected == 1){
 		stopAll();
 		state = STOPPED;
@@ -184,18 +167,30 @@ void loop(){
 		edgeDetected = 0;
 	}
 
-	if(state == MOVING){
-		// Choose which animal to wiggle
-		int index = random(0, numberAnimals-1);
-		Serial.print("Moving animal");
-		Serial.print(index);
-		Serial.print(" on pin ");
-		Serial.print(pins[index]);
-		Serial.print(" by ");
-		Serial.print(angles[index]);
-		Serial.println("degrees");
-		//moveMe(pins[index], angles[index]);
-		moveMe(10, 5);
+	if(state == MOVING && dTimeMtn > thisDelay){
+		// Choose fast or slow ones
+		int index = random(0, 10);
+		if(index <= 2){
+      switch(index){
+        case 0:
+           moveUs(slowPins[0], slowPins[0], slowAngle);
+           break;
+        case 1:
+          moveUs(slowPins[1], slowPins[1], slowAngle);
+          break;
+        default:
+          moveUs(slowPins[0], slowPins[1], slowAngle);
+      }
+      timeLastMoved = millis();
+      thisDelay = random(0,MAX_DELAY_BETWEEN);
+		}
+		else{
+		  int A = random(0, numberFastAnimals);
+      int B = random(0, numberFastAnimals);
+      moveUs(fastPins[A], fastPins[B], fastAngle);
+      timeLastMoved = millis();
+      thisDelay = random(0,MAX_DELAY_BETWEEN);
+		}
 	}
 	else{ // ie, motion is detected
 		  // only trigger on edges - not appropriate in this scope, moved to edge detection area
